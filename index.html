@@ -9,7 +9,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icon.svg">
   <link rel="icon" href="./icon.svg">
-  <link rel="stylesheet" href="./styles.css?v=4">
+  <link rel="stylesheet" href="./styles.css?v=5">
 </head>
 <body>
   <header class="app-header">
@@ -117,9 +117,9 @@
       <h2>添加新食物</h2>
       <label>食物名称<input id="new-food-name" maxlength="50" required></label>
       <div class="macro-inputs">
-        <label>碳水<input id="new-food-carbs" type="number" min="0" max="100" step="0.1" required><small>g/100g</small></label>
-        <label>蛋白质<input id="new-food-protein" type="number" min="0" max="100" step="0.1" required><small>g/100g</small></label>
-        <label>脂肪<input id="new-food-fat" type="number" min="0" max="100" step="0.1" required><small>g/100g</small></label>
+        <label>碳水<input id="new-food-carbs" type="number" min="0" max="1000" step="0.1" required><small>g/100g</small></label>
+        <label>蛋白质<input id="new-food-protein" type="number" min="0" max="1000" step="0.1" required><small>g/100g</small></label>
+        <label>脂肪<input id="new-food-fat" type="number" min="0" max="1000" step="0.1" required><small>g/100g</small></label>
       </div>
       <button class="button primary full" value="default">保存并使用</button>
     </form>
@@ -138,6 +138,6 @@
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="./app.js?v=4" type="module"></script>
+  <script src="./app.js?v=5" type="module"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
-const CACHE = "food-log-v4";
-const STATIC = ["./", "./app.js?v=4", "./styles.css?v=4", "./manifest.webmanifest", "./icon.svg"];
+const CACHE = "food-log-v5";
+const STATIC = ["./", "./app.js?v=5", "./styles.css?v=5", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(STATIC)));
