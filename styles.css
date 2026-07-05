@@ -123,6 +123,27 @@ input:focus, select:focus {
   border-color: var(--blue);
   box-shadow: 0 0 0 3px rgba(49, 94, 251, 0.12);
 }
+.food-input-wrap { position: relative; display: block; }
+.food-input-wrap .food-name { padding-right: 46px; }
+.food-picker {
+  position: absolute;
+  z-index: 2;
+  top: 7px;
+  right: 0;
+  width: 46px;
+  height: 46px;
+  margin: 0;
+  opacity: 0;
+}
+.food-arrow {
+  position: absolute;
+  top: 17px;
+  right: 16px;
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1;
+  pointer-events: none;
+}
 .grams-wrap { position: relative; }
 .grams-wrap::after {
   content: "g";

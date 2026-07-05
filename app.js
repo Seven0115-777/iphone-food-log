@@ -22,10 +22,10 @@ const state = {
 };
 
 const seedFoods = [
-  ["米饭（生米）", 80, 0, 0], ["米饭（熟米）", 28, 0, 0], ["鸡蛋", 0, 6, 6],
+  ["米饭（生米）", 80, 0, 0], ["米饭（熟米）", 28, 0, 0], ["鸡蛋", 0, 600, 600],
   ["鸡排", 5.9, 1.2, 15.4], ["吐司", 43, 18, 2.4], ["香蕉", 22, 0, 0],
   ["米糊", 71, 0, 0], ["蓝莓", 14, 0, 0], ["蛋白粉", 5, 1, 78],
-  ["老豆腐", 12, 4.8, 2], ["食用油", 0, 100, 0], ["鸡蛋（去黄）", 0, 0, 6],
+  ["老豆腐", 12, 4.8, 2], ["食用油", 0, 100, 0], ["鸡蛋（去黄）", 0, 0, 600],
   ["燕麦", 67, 7.5, 13], ["魔芋蛋糕", 6, 0, 13], ["奶粉", 39, 28, 24],
   ["牛奶", 5, 4.4, 3.6],
 ];
@@ -61,6 +61,14 @@ async function openDatabase() {
   for (const [key, value] of [["carbs", 180], ["protein", 120], ["fat", 50]]) {
     if (!await request(settings.get(key))) settings.add({ key, value });
   }
+  const dataVersion = Number((await request(settings.get("dataVersion")))?.value || 1);
+  if (dataVersion < 2) {
+    for (const food of await request(foodStore.getAll())) {
+      if (food.name === "鸡蛋") foodStore.put({ ...food, protein: 600, fat: 600 });
+      if (food.name === "鸡蛋（去黄）") foodStore.put({ ...food, protein: 600 });
+    }
+    settings.put({ key: "dataVersion", value: 2 });
+  }
   await transactionDone(seedTransaction);
   return database;
 }
@@ -75,7 +83,7 @@ const validDate = value => {
   const date = new Date(Date.UTC(year, month - 1, day));
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 };
-const numeric = (value, label, min = 0, max = 100) => {
+const numeric = (value, label, min = 0, max = 1000) => {
   if (value === "" || value === null || value === undefined) throw new Error(`请填写${label}`);
   const result = Number(value);
   if (!Number.isFinite(result) || result < min || result > max) {
@@ -229,10 +237,16 @@ function exactFood(name) {
 }
 
 function renderFoodOptions() {
+  const pickerOptions = `<option value="">选择已有食物</option>${state.foods
+    .map(food => `<option value="${food.id}">${esc(food.name)}</option>`).join("")}`;
   $("#food-options").innerHTML = state.foods
     .map(food => `<option value="${esc(food.name)}"></option>`).join("");
   $("#edit-food").innerHTML = state.foods
     .map(food => `<option value="${food.id}">${esc(food.name)}</option>`).join("");
+  $$(".food-picker").forEach(picker => {
+    picker.innerHTML = pickerOptions;
+    picker.value = "";
+  });
 }
 
 function foodRow(values = {}) {
@@ -240,11 +254,19 @@ function foodRow(values = {}) {
   element.className = "food-row";
   element.innerHTML = `
     <label>吃了什么
-      <input class="food-name" list="food-options" placeholder="选择或输入食物" value="${esc(values.name || "")}" required>
+      <span class="food-input-wrap">
+        <input class="food-name" list="food-options" placeholder="选择或输入食物"
+          autocomplete="off" autocapitalize="off" value="${esc(values.name || "")}" required>
+        <select class="food-picker" aria-label="展开已有食物">
+          <option value="">选择已有食物</option>
+          ${state.foods.map(food => `<option value="${food.id}">${esc(food.name)}</option>`).join("")}
+        </select>
+        <span class="food-arrow" aria-hidden="true">⌄</span>
+      </span>
     </label>
     <label class="grams-wrap">吃了多少
       <input class="food-grams" type="number" min="0.1" max="10000" step="0.1" inputmode="decimal"
-        placeholder="0" value="${esc(values.grams || "")}" required>
+        autocomplete="off" placeholder="0" value="${esc(values.grams || "")}" required>
     </label>
     <button class="remove-row" type="button" aria-label="删除这一行">×</button>
   `;
@@ -258,6 +280,11 @@ function foodRow(values = {}) {
   element.querySelector(".food-name").addEventListener("change", event => {
     const name = event.target.value.trim();
     if (name && !exactFood(name)) openNewFood(name, event.target);
+  });
+  element.querySelector(".food-picker").addEventListener("change", event => {
+    const food = state.foods.find(item => item.id === Number(event.target.value));
+    if (food) element.querySelector(".food-name").value = food.name;
+    event.target.value = "";
   });
   return element;
 }
@@ -382,7 +409,7 @@ function openNewFood(name, input) {
   $("#new-food-carbs").focus();
 }
 
-$("#add-row").addEventListener("click", () => addFoodRow());
+$("#add-row").addEventListener("click", () => addFoodRow({ name: "", grams: "" }));
 
 $("#record-form").addEventListener("submit", async event => {
   event.preventDefault();
