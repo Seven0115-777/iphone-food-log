@@ -23,7 +23,7 @@ const state = {
 
 const seedFoods = [
   ["米饭（生米）", 80, 0, 0], ["米饭（熟米）", 28, 0, 0], ["鸡蛋", 0, 600, 600],
-  ["鸡排", 5.9, 1.2, 15.4], ["吐司", 43, 18, 2.4], ["香蕉", 22, 0, 0],
+  ["鸡排", 5.9, 1.2, 15.4], ["香蕉", 22, 0, 0],
   ["米糊", 71, 0, 0], ["蓝莓", 14, 0, 0], ["蛋白粉", 5, 1, 78],
   ["老豆腐", 12, 4.8, 2], ["食用油", 0, 100, 0], ["鸡蛋（去黄）", 0, 0, 600],
   ["燕麦", 67, 7.5, 13], ["魔芋蛋糕", 6, 0, 13], ["奶粉", 39, 28, 24],
@@ -68,6 +68,12 @@ async function openDatabase() {
       if (food.name === "鸡蛋（去黄）") foodStore.put({ ...food, protein: 600 });
     }
     settings.put({ key: "dataVersion", value: 2 });
+  }
+  if (dataVersion < 3) {
+    for (const food of await request(foodStore.getAll())) {
+      if (food.name === "吐司") foodStore.delete(food.id);
+    }
+    settings.put({ key: "dataVersion", value: 3 });
   }
   await transactionDone(seedTransaction);
   return database;
