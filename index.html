@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#315efb">
+  <meta name="description" content="个人减脂饮食记录">
+  <title>多吃扇嘴巴子</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icon.svg">
+  <link rel="icon" href="./icon.svg">
+  <link rel="stylesheet" href="./styles.css?v=4">
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <p class="eyebrow" id="today-label"></p>
+      <h1>多吃扇嘴巴子</h1>
+    </div>
+    <span class="header-mark" aria-hidden="true">🥢</span>
+  </header>
+
+  <main>
+    <section class="view active" id="record-view" aria-labelledby="record-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">今天吃了什么</p>
+          <h2 id="record-title">记一笔</h2>
+        </div>
+        <label class="date-field">记录日期
+          <input id="record-date" type="date">
+        </label>
+      </div>
+
+      <form id="record-form">
+        <div id="food-rows"></div>
+        <button class="button subtle full" id="add-row" type="button">＋ 再加一种食物</button>
+        <button class="button primary full record-button" type="submit">记录这顿</button>
+      </form>
+    </section>
+
+    <section class="view" id="today-view" aria-labelledby="today-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">每日汇总</p>
+          <h2 id="today-title">今日进度</h2>
+        </div>
+        <input class="date-picker" id="summary-date" type="date" aria-label="查看日期">
+      </div>
+      <div class="goal-grid" id="goal-grid"></div>
+      <div class="card">
+        <div class="card-heading">
+          <h3>食物明细</h3>
+          <span class="muted" id="entry-count"></span>
+        </div>
+        <div id="entry-list"></div>
+      </div>
+      <div class="discipline-card">
+        <p>是否偷吃！！！</p>
+        <div>
+          <button class="button discipline" id="discipline" type="button">自律！</button>
+          <button class="button danger" id="confess" type="button">我是狗</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="history-view" aria-labelledby="history-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">最近30天</p>
+          <h2 id="history-title">过往记录</h2>
+        </div>
+      </div>
+      <div id="history-list"></div>
+    </section>
+
+    <section class="view" id="settings-view" aria-labelledby="settings-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">按你的计划来</p>
+          <h2 id="settings-title">目标与数据</h2>
+        </div>
+      </div>
+      <form class="card settings-form" id="goals-form">
+        <label>每日碳水目标 <span><input id="goal-carbs" type="number" min="1" max="1000" step="1" required> g</span></label>
+        <label>每日蛋白质目标 <span><input id="goal-protein" type="number" min="1" max="1000" step="1" required> g</span></label>
+        <label>每日脂肪目标 <span><input id="goal-fat" type="number" min="1" max="1000" step="1" required> g</span></label>
+        <button class="button primary full" type="submit">保存目标</button>
+      </form>
+      <div class="card data-card">
+        <h3>数据备份</h3>
+        <p class="muted">数据只保存在这台 iPhone。建议每周导出一次备份。</p>
+        <button class="button subtle full" id="export-data" type="button">导出全部数据</button>
+        <button class="button subtle full restore-button" id="restore-data" type="button">从备份恢复</button>
+        <input id="restore-file" type="file" accept="application/json,.json" hidden>
+      </div>
+      <div class="card data-card">
+        <h3>添加到 iPhone</h3>
+        <p class="muted install-note">使用 Safari 打开本页，点击“分享”按钮，再选择“添加到主屏幕”。安装后可离线使用。</p>
+      </div>
+    </section>
+  </main>
+
+  <nav class="bottom-nav" aria-label="主导航">
+    <button class="active" data-view="record"><span>＋</span>记录</button>
+    <button data-view="today"><span>◔</span>今日</button>
+    <button data-view="history"><span>▤</span>历史</button>
+    <button data-view="settings"><span>⚙</span>设置</button>
+  </nav>
+
+  <datalist id="food-options"></datalist>
+
+  <dialog id="new-food-dialog">
+    <form method="dialog" id="new-food-form">
+      <button class="dialog-close" value="cancel" formnovalidate aria-label="关闭">×</button>
+      <p class="eyebrow">数据库里还没有</p>
+      <h2>添加新食物</h2>
+      <label>食物名称<input id="new-food-name" maxlength="50" required></label>
+      <div class="macro-inputs">
+        <label>碳水<input id="new-food-carbs" type="number" min="0" max="100" step="0.1" required><small>g/100g</small></label>
+        <label>蛋白质<input id="new-food-protein" type="number" min="0" max="100" step="0.1" required><small>g/100g</small></label>
+        <label>脂肪<input id="new-food-fat" type="number" min="0" max="100" step="0.1" required><small>g/100g</small></label>
+      </div>
+      <button class="button primary full" value="default">保存并使用</button>
+    </form>
+  </dialog>
+
+  <dialog id="edit-dialog">
+    <form method="dialog" id="edit-form">
+      <button class="dialog-close" value="cancel" formnovalidate aria-label="关闭">×</button>
+      <p class="eyebrow">修正记录</p>
+      <h2>编辑食物</h2>
+      <label>食物<select id="edit-food" required></select></label>
+      <label>吃了多少<input id="edit-grams" type="number" min="0.1" max="10000" step="0.1" required><small>克</small></label>
+      <label>记录日期<input id="edit-date" type="date" required></label>
+      <button class="button primary full" value="default">保存修改</button>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js?v=4" type="module"></script>
+</body>
+</html>
