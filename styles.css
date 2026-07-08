@@ -33,6 +33,7 @@ button { cursor: pointer; }
   align-items: center;
   justify-content: space-between;
 }
+body[data-view="history"] .app-header { display: none; }
 h1, h2, h3, p { margin-top: 0; }
 h1 { margin-bottom: 0; font-size: 25px; letter-spacing: -0.5px; }
 h2 { margin-bottom: 0; font-size: 26px; }
@@ -186,6 +187,17 @@ input:focus, select:focus {
 .discipline { color: #fff; background: var(--blue); }
 .record-button { margin-top: 14px; min-height: 56px; font-size: 17px; }
 
+.weight-form label {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 10px;
+}
+.weight-form small { display: block; margin-top: 3px; color: var(--muted); font-weight: 500; }
+.weight-form span { display: flex; align-items: center; gap: 7px; }
+.weight-form input { width: 112px; margin: 0; text-align: right; }
+.weight-form .button { margin-top: 14px; }
+
 .goal-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -287,6 +299,29 @@ input:focus, select:focus {
   font-size: 12px;
 }
 .history-macros b { display: block; margin-top: 3px; color: var(--ink); font-size: 15px; }
+.weight-chart-card { padding: 14px 16px 12px; }
+.weight-chart-card svg {
+  display: block;
+  width: 100%;
+  height: 170px;
+}
+.weight-chart-card line { stroke: var(--line); stroke-width: 2; }
+.weight-chart-card polyline {
+  fill: none;
+  stroke: var(--blue);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.weight-chart-card circle { fill: var(--surface); stroke: var(--blue); stroke-width: 3; }
+.chart-note {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+.empty.mini { padding: 18px 8px; }
 
 .settings-form label {
   display: flex;

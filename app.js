@@ -16,6 +16,7 @@ const state = {
   foods: [],
   goals: { carbs: 180, protein: 120, fat: 50 },
   entries: [],
+  weight: null,
   viewDate: localToday(),
   pendingFoodInput: null,
   editingId: null,
@@ -41,13 +42,22 @@ const transactionDone = transaction => new Promise((resolve, reject) => {
 });
 
 async function openDatabase() {
-  const open = indexedDB.open("food-log", 1);
+  const open = indexedDB.open("food-log", 2);
   open.onupgradeneeded = () => {
     const database = open.result;
-    database.createObjectStore("foods", { keyPath: "id", autoIncrement: true });
-    const entries = database.createObjectStore("entries", { keyPath: "id", autoIncrement: true });
-    entries.createIndex("date", "date");
-    database.createObjectStore("settings", { keyPath: "key" });
+    if (!database.objectStoreNames.contains("foods")) {
+      database.createObjectStore("foods", { keyPath: "id", autoIncrement: true });
+    }
+    if (!database.objectStoreNames.contains("entries")) {
+      const entries = database.createObjectStore("entries", { keyPath: "id", autoIncrement: true });
+      entries.createIndex("date", "date");
+    }
+    if (!database.objectStoreNames.contains("settings")) {
+      database.createObjectStore("settings", { keyPath: "key" });
+    }
+    if (!database.objectStoreNames.contains("weights")) {
+      database.createObjectStore("weights", { keyPath: "date" });
+    }
   };
   const database = await request(open);
   const seedTransaction = database.transaction(["foods", "settings"], "readwrite");
@@ -112,6 +122,7 @@ async function api(path, options = {}) {
     return {
       foods: (await getAll("foods")).sort((a, b) => a.id - b.id),
       goals: await currentGoals(),
+      weight: await getOne("weights", date),
       entries: (await getAll("entries")).filter(entry => entry.date === date).sort((a, b) => b.id - a.id),
     };
   }
@@ -132,7 +143,29 @@ async function api(path, options = {}) {
       row.count++;
       summaries.set(entry.date, row);
     }
-    return [...summaries.values()].sort((a, b) => b.date.localeCompare(a.date));
+    const weights = new Map((await getAll("weights"))
+      .filter(weight => weight.date >= from && weight.date <= to)
+      .map(weight => [weight.date, weight.kg]));
+    for (const date of weights.keys()) {
+      if (!summaries.has(date)) summaries.set(date, { date, carbs: 0, protein: 0, fat: 0, count: 0 });
+    }
+    return [...summaries.values()]
+      .map(row => ({ ...row, weight: weights.get(row.date) ?? null }))
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }
+
+  if (method === "PUT" && url.pathname.endsWith("/api/weight")) {
+    const input = parseBody(options);
+    if (!validDate(input.date)) throw new Error("日期格式错误");
+    const transaction = database.transaction("weights", "readwrite");
+    const store = transaction.objectStore("weights");
+    if (input.kg === "" || input.kg === null || input.kg === undefined) {
+      store.delete(input.date);
+    } else {
+      store.put({ date: input.date, kg: numeric(input.kg, "体重", 20, 300), updatedAt: new Date().toISOString() });
+    }
+    await transactionDone(transaction);
+    return { ok: true };
   }
 
   if (method === "POST" && url.pathname.endsWith("/api/foods")) {
@@ -296,7 +329,15 @@ function foodRow(values = {}) {
 }
 
 function addFoodRow(values) {
-  $("#food-rows").append(foodRow(values));
+  const row = foodRow(values);
+  $("#food-rows").append(row);
+  const clearBlankFields = () => {
+    if (!values?.name) row.querySelector(".food-name").value = "";
+    if (!values?.grams) row.querySelector(".food-grams").value = "";
+    row.querySelector(".food-picker").value = "";
+  };
+  clearBlankFields();
+  setTimeout(clearBlankFields);
 }
 
 function totals() {
@@ -344,6 +385,11 @@ function renderSummary() {
   `).join("") : `<p class="empty">这一天还没有记录<br>去吃点计划内的东西吧</p>`;
 }
 
+function renderWeightForm() {
+  $("#weight-date-label").textContent = formatDate(state.viewDate);
+  $("#fasting-weight").value = state.weight?.kg ?? "";
+}
+
 function formatDate(dateString) {
   const date = new Date(`${dateString}T12:00:00`);
   return new Intl.DateTimeFormat("zh-CN", {
@@ -362,8 +408,9 @@ async function renderHistory() {
     const date = new Date(end);
     date.setDate(date.getDate() - i);
     const key = isoDate(date);
-    days.push(byDate.get(key) || { date: key, carbs: 0, protein: 0, fat: 0, count: 0 });
+    days.push(byDate.get(key) || { date: key, carbs: 0, protein: 0, fat: 0, count: 0, weight: null });
   }
+  renderWeightChart(days);
   $("#history-list").innerHTML = days.map(day => `
     <button class="history-card" data-date="${day.date}">
       <div class="history-top">
@@ -379,6 +426,34 @@ async function renderHistory() {
   `).join("");
 }
 
+function renderWeightChart(days) {
+  const points = days.filter(day => day.weight !== null).reverse();
+  if (!points.length) {
+    $("#weight-chart").innerHTML = `<p class="empty mini">还没有体重记录<br>在记录页填一次就会出现曲线</p>`;
+    return;
+  }
+  const weights = points.map(point => point.weight);
+  const min = Math.min(...weights);
+  const max = Math.max(...weights);
+  const span = max - min || 1;
+  const coords = points.map((point, index) => {
+    const x = points.length === 1 ? 150 : 18 + index * (264 / (points.length - 1));
+    const y = 130 - ((point.weight - min) / span) * 100;
+    return { ...point, x, y };
+  });
+  $("#weight-chart").innerHTML = `
+    <svg viewBox="0 0 300 160" role="img" aria-label="最近30天空腹体重曲线">
+      <line x1="18" y1="130" x2="282" y2="130"></line>
+      <polyline points="${coords.map(point => `${point.x},${point.y}`).join(" ")}"></polyline>
+      ${coords.map(point => `<circle cx="${point.x}" cy="${point.y}" r="4"><title>${formatDate(point.date)} ${round(point.weight)}kg</title></circle>`).join("")}
+    </svg>
+    <div class="chart-note">
+      <span>最新 ${round(points.at(-1).weight)}kg</span>
+      <span>区间 ${round(min)}–${round(max)}kg</span>
+    </div>
+  `;
+}
+
 function setGoalInputs() {
   $("#goal-carbs").value = state.goals.carbs;
   $("#goal-protein").value = state.goals.protein;
@@ -390,14 +465,18 @@ async function refresh(date = state.viewDate) {
   const result = await api(`/api/state?date=${date}`);
   state.foods = result.foods;
   state.goals = result.goals;
+  state.weight = result.weight;
   state.entries = result.entries;
   $("#summary-date").value = date;
+  $("#record-date").value = date;
   renderFoodOptions();
   setGoalInputs();
+  renderWeightForm();
   renderSummary();
 }
 
 async function showView(name) {
+  document.body.dataset.view = name;
   $$(".view").forEach(view => view.classList.toggle("active", view.id === `${name}-view`));
   $$(".bottom-nav button").forEach(button => button.classList.toggle("active", button.dataset.view === name));
   if (name === "today") await refresh($("#summary-date").value || localToday());
@@ -438,6 +517,20 @@ $("#record-form").addEventListener("submit", async event => {
     await showView("today");
   } catch (error) {
     if (error.message) toast(error.message);
+  }
+});
+
+$("#weight-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  try {
+    await api("/api/weight", {
+      method: "PUT",
+      body: JSON.stringify({ date: $("#record-date").value, kg: $("#fasting-weight").value }),
+    });
+    await refresh($("#record-date").value);
+    toast("体重已保存");
+  } catch (error) {
+    toast(error.message);
   }
 });
 
@@ -549,6 +642,7 @@ $("#export-data").addEventListener("click", async () => {
       foods: await getAll("foods"),
       goals: await currentGoals(),
       entries: await getAll("entries"),
+      weights: await getAll("weights"),
     };
     const url = URL.createObjectURL(new Blob(
       [JSON.stringify(backup, null, 2)],
@@ -613,18 +707,29 @@ $("#restore-file").addEventListener("change", async event => {
     const restoredGoals = Object.fromEntries(["carbs", "protein", "fat"].map(key => [
       key, numeric(input.goals[key], `${key}目标`, 1, 1000),
     ]));
+    const restoredWeights = (input.weights || []).map(weight => {
+      if (!validDate(weight.date)) throw new Error("备份中的体重记录无效");
+      return {
+        date: weight.date,
+        kg: numeric(weight.kg, "体重", 20, 300),
+        updatedAt: weight.updatedAt || new Date().toISOString(),
+      };
+    });
     if (!confirm(`将用备份中的 ${restoredEntries.length} 条记录覆盖当前数据，确定继续吗？`)) return;
 
-    const transaction = database.transaction(["foods", "entries", "settings"], "readwrite");
+    const transaction = database.transaction(["foods", "entries", "settings", "weights"], "readwrite");
     const foodStore = transaction.objectStore("foods");
     const entryStore = transaction.objectStore("entries");
     const settingStore = transaction.objectStore("settings");
+    const weightStore = transaction.objectStore("weights");
     foodStore.clear();
     entryStore.clear();
     settingStore.clear();
+    weightStore.clear();
     restoredFoods.forEach(food => foodStore.put(food));
     restoredEntries.forEach(entry => entryStore.put(entry));
     Object.entries(restoredGoals).forEach(([key, value]) => settingStore.put({ key, value }));
+    restoredWeights.forEach(weight => weightStore.put(weight));
     await transactionDone(transaction);
     await refresh(localToday());
     toast("备份恢复完成");

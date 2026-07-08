@@ -9,7 +9,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icon.svg">
   <link rel="icon" href="./icon.svg">
-  <link rel="stylesheet" href="./styles.css?v=6">
+  <link rel="stylesheet" href="./styles.css?v=7">
 </head>
 <body>
   <header class="app-header">
@@ -31,6 +31,13 @@
           <input id="record-date" type="date">
         </label>
       </div>
+
+      <form class="card weight-form" id="weight-form">
+        <label>每日空腹体重 <small id="weight-date-label"></small>
+          <span><input id="fasting-weight" type="number" min="20" max="300" step="0.1" inputmode="decimal" placeholder="可不填"> kg</span>
+        </label>
+        <button class="button subtle full" type="submit">保存体重</button>
+      </form>
 
       <form id="record-form">
         <div id="food-rows"></div>
@@ -68,9 +75,10 @@
       <div class="section-heading">
         <div>
           <p class="eyebrow">最近30天</p>
-          <h2 id="history-title">过往记录</h2>
+          <h2 id="history-title">历史体重曲线</h2>
         </div>
       </div>
+      <div class="card weight-chart-card" id="weight-chart"></div>
       <div id="history-list"></div>
     </section>
 
@@ -138,6 +146,6 @@
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="./app.js?v=6" type="module"></script>
+  <script src="./app.js?v=7" type="module"></script>
 </body>
 </html>
