@@ -26,7 +26,7 @@ const seedFoods = [
   ["米饭（生米）", 80, 0, 0], ["米饭（熟米）", 28, 0, 0], ["鸡蛋", 0, 600, 600],
   ["鸡排", 5.9, 1.2, 15.4], ["香蕉", 22, 0, 0],
   ["米糊", 71, 0, 0], ["蓝莓", 14, 0, 0], ["蛋白粉", 5, 1, 78],
-  ["老豆腐", 12, 4.8, 2], ["食用油", 0, 100, 0], ["鸡蛋（去黄）", 0, 0, 600],
+  ["食用油", 0, 100, 0], ["鸡蛋（去黄）", 0, 0, 600],
   ["燕麦", 67, 7.5, 13], ["魔芋蛋糕", 6, 0, 13], ["奶粉", 39, 28, 24],
   ["牛奶", 5, 4.4, 3.6],
 ];
@@ -84,6 +84,12 @@ async function openDatabase() {
       if (food.name === "吐司") foodStore.delete(food.id);
     }
     settings.put({ key: "dataVersion", value: 3 });
+  }
+  if (dataVersion < 4) {
+    for (const food of await request(foodStore.getAll())) {
+      if (food.name === "老豆腐") foodStore.delete(food.id);
+    }
+    settings.put({ key: "dataVersion", value: 4 });
   }
   await transactionDone(seedTransaction);
   return database;
@@ -436,22 +442,31 @@ function renderWeightChart(days) {
   const min = Math.min(...weights);
   const max = Math.max(...weights);
   const span = max - min || 1;
+  const width = Math.max(300, points.length * 64);
   const coords = points.map((point, index) => {
-    const x = points.length === 1 ? 150 : 18 + index * (264 / (points.length - 1));
-    const y = 130 - ((point.weight - min) / span) * 100;
+    const x = points.length === 1 ? 150 : 32 + index * 64;
+    const y = 108 - ((point.weight - min) / span) * 70;
     return { ...point, x, y };
   });
   $("#weight-chart").innerHTML = `
-    <svg viewBox="0 0 300 160" role="img" aria-label="最近30天空腹体重曲线">
-      <line x1="18" y1="130" x2="282" y2="130"></line>
-      <polyline points="${coords.map(point => `${point.x},${point.y}`).join(" ")}"></polyline>
-      ${coords.map(point => `<circle cx="${point.x}" cy="${point.y}" r="4"><title>${formatDate(point.date)} ${round(point.weight)}kg</title></circle>`).join("")}
-    </svg>
+    <div class="weight-chart-scroll">
+      <svg viewBox="0 0 ${width} 155" style="width:${width}px" role="img" aria-label="最近30天空腹体重曲线，每个记录日均标注体重">
+        <line x1="20" y1="120" x2="${width - 20}" y2="120"></line>
+        <polyline points="${coords.map(point => `${point.x},${point.y}`).join(" ")}"></polyline>
+        ${coords.map(point => `
+          <text class="weight-value" x="${point.x}" y="${point.y - 11}">${compact(point.weight)}</text>
+          <circle cx="${point.x}" cy="${point.y}" r="4"><title>${formatDate(point.date)} ${round(point.weight)}kg</title></circle>
+          <text class="weight-date" x="${point.x}" y="144">${Number(point.date.slice(5, 7))}/${Number(point.date.slice(8))}</text>
+        `).join("")}
+      </svg>
+    </div>
     <div class="chart-note">
       <span>最新 ${round(points.at(-1).weight)}kg</span>
-      <span>区间 ${round(min)}–${round(max)}kg</span>
+      <span>左右滑动查看每天</span>
     </div>
   `;
+  const scroll = $(".weight-chart-scroll");
+  scroll.scrollLeft = scroll.scrollWidth;
 }
 
 function setGoalInputs() {
